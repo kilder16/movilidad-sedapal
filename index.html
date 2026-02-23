@@ -24,11 +24,11 @@
   --texto-suave:#5a6a7e;
   --borde:#d1dce8;
 }
-body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--gris-bg);color:var(--texto);min-height:100vh;overflow-x:hidden} #app-wrapper{padding-top:var(--header-h,90px)}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--gris-bg);color:var(--texto);min-height:100vh;overflow-x:hidden} #app-wrapper{padding-top:var(--header-h,110px)}
 .mono{font-family:'JetBrains Mono',monospace}
 
 .header{background:linear-gradient(135deg,var(--azul-dark) 0%,var(--azul) 60%,var(--azul-light) 100%);padding:0;position:fixed;top:0;left:0;right:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.25)}
-.header-inner{display:grid;grid-template-columns:auto 1fr auto;align-items:center;padding:4px 14px;gap:8px;height:52px;overflow:hidden}
+.header-inner{display:grid;grid-template-columns:auto 1fr auto;align-items:center;padding:6px 14px;gap:8px;height:68px;overflow:visible}
 .logo-text{color:#fff;font-weight:700;font-size:17px;line-height:1.1}
 .logo-sub{color:rgba(255,255,255,.75);font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
 .reloj{color:#fff;font-family:'JetBrains Mono',monospace;font-size:13px;text-align:right;line-height:1.4}
@@ -213,7 +213,7 @@ input:focus{border-color:var(--azul);background:#fff;box-shadow:0 0 0 3px rgba(0
     <div class="reloj">
       <div id="relojHora" class="mono">--:--:--</div>
       <div class="reloj-fecha" id="relojFecha">--/--/----</div>
-      <div id="turnoChip" style="font-size:8px;margin-top:1px;padding:1px 5px;border-radius:8px;font-weight:700;display:inline-block;background:rgba(255,255,255,0.15);color:#fff;letter-spacing:.3px"></div>
+      <div id="turnoChip" style="font-size:9px;margin-top:2px;padding:2px 7px;border-radius:10px;font-weight:700;display:inline-block;background:rgba(255,255,255,0.15);color:#fff;letter-spacing:.5px"></div>
     </div>
   </div>
   <div class="nav-tabs">
@@ -810,8 +810,9 @@ function guardarConfig() {
     const navTabs = document.querySelector('.nav-tabs');
     if (navTabs) {
       const bar = document.createElement('div');
-      bar.style.cssText = 'background:rgba(0,0,0,0.2);text-align:center;padding:4px 4px 5px;margin-top:2px;';
+      bar.style.cssText = 'background:rgba(0,0,0,0.3);text-align:center;padding:6px 8px;border-top:1px solid rgba(255,255,255,0.15);';
       bar.appendChild(badge);
+      // Insertar DESPUÉS del nav-tabs (no antes)
       navTabs.parentNode.insertBefore(bar, navTabs);
     }
   }
