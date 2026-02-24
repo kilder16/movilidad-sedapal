@@ -310,7 +310,10 @@ input:focus{border-color:var(--azul);background:#fff;box-shadow:0 0 0 3px rgba(0
   <div class="card" style="background:linear-gradient(135deg,#f0f4f8,#e8eef5)">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div class="card-title" style="margin-bottom:0">⚙️ Datos del Servicio</div>
-      <button class="btn btn-outline" id="btnEditar" onclick="toggleEditar()" style="font-size:11px;padding:6px 12px">✏️ Modificar</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-outline" id="btnEditar" onclick="toggleEditar()" style="font-size:11px;padding:6px 12px">✏️ Modificar</button>
+        <button class="btn btn-primary" id="btnGuardar" onclick="toggleEditar()" style="font-size:11px;padding:6px 12px;display:none">💾 Guardar</button>
+      </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -1310,7 +1313,14 @@ function actualizarAdmin() {
 
   const lista=document.getElementById('listaAdmin');
   if(!registros.length){
-    lista.innerHTML='<div class="empty-state"><div class="empty-icon">🚌</div><div>Sin registros aún</div><div style="font-size:12px">Comparte el link en WhatsApp</div></div>';
+    const rutaD = getRutaFromURL() || '07';
+    const rawD = localStorage.getItem('reg_mov_r' + rutaD);
+    const histD = localStorage.getItem('hist_mov_r' + rutaD);
+    const totalHist = histD ? JSON.parse(histD).reduce((a,h)=>a+(h.registros||[]).length,0) : 0;
+    lista.innerHTML='<div class="empty-state"><div class="empty-icon">🚌</div><div>Sin registros aún</div>' +
+      (totalHist > 0 ? '<div style="font-size:11px;color:var(--azul);margin-top:6px">📂 '+totalHist+' registro(s) en historial</div>' : '') +
+      '<div style="font-size:10px;color:#aaa;margin-top:4px">Raw: '+(rawD ? JSON.parse(rawD).length+' items' : 'vacío')+'</div>' +
+      '</div>';
     return;
   }
   lista.innerHTML=
@@ -1563,11 +1573,11 @@ function toggleEditar() {
       actualizarAdmin();
     }
   });
-  const btn = document.getElementById('btnEditar');
-  btn.textContent = modoEdicion ? '💾 Guardar' : '✏️ Modificar';
-  btn.style.background = modoEdicion ? 'var(--verde)' : '';
-  btn.style.color = modoEdicion ? '#fff' : '';
-  btn.style.borderColor = modoEdicion ? 'var(--verde)' : '';
+  const btnE = document.getElementById('btnEditar');
+  const btnG = document.getElementById('btnGuardar');
+  if (btnE) btnE.style.display = modoEdicion ? 'none' : '';
+  if (btnG) btnG.style.display = modoEdicion ? '' : 'none';
+  const btn = btnE.style.borderColor = modoEdicion ? 'var(--verde)' : '';
 }
 
 
