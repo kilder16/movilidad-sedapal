@@ -621,8 +621,24 @@ let acResultadosNombre = [];
 // TURNOS: mañana (05:00–11:59) | tarde (12:00–23:59)
 // ============================================================
 function getTurnoActual() {
-  const h = new Date().getHours();
-  return h >= 12 ? 'tarde' : 'manana';
+  const now = new Date();
+  const h = now.getHours(), m = now.getMinutes();
+  const mins = h * 60 + m;
+  // Turno mañana: 5:30-8:00 | Turno tarde: 16:45-19:00
+  if (mins >= 330 && mins < 480) return 'manana';
+  if (mins >= 1005 && mins < 1140) return 'tarde';
+  // Fuera de horario: retornar según mitad del día para clave de sesión
+  return mins < 720 ? 'manana' : 'tarde';
+}
+
+// Estados: 'registro' | 'solo_pdf' | 'fuera'
+function getEstadoHorario() {
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
+  if (mins >= 330 && mins < 480) return { estado: 'registro', turno: 'manana', label: '🌅 TURNO MAÑANA', msg: null };
+  if (mins >= 480 && mins < 540) return { estado: 'solo_pdf', turno: 'manana', label: '🌅 TURNO MAÑANA', msg: '⏰ Horario de registro cerrado. Solo puedes descargar tu comprobante hasta las 9:00 am.' };
+  if (mins >= 1005 && mins < 1140) return { estado: 'registro', turno: 'tarde', label: '🌆 TURNO TARDE', msg: null };
+  return { estado: 'fuera', turno: mins < 720 ? 'manana' : 'tarde', label: '🌙 FUERA DE HORARIO', msg: '🚫 Fuera del horario de registro.<br>🌅 Mañana: 5:30 am – 8:00 am<br>🌆 Tarde: 4:45 pm – 7:00 pm' };
 }
 function getFechaHoy() {
   return new Date().toLocaleDateString('es-PE');
@@ -813,16 +829,19 @@ function tick() {
   const chip = document.getElementById('turnoChip');
   if(chip) {
     const h = n.getHours();
-    if(h >= 5 && h < 12) {
-      chip.textContent = '🌅 TURNO MAÑANA';
+    const eh = getEstadoHorario();
+    chip.textContent = eh.label;
+    if (eh.estado === 'registro' && eh.turno === 'manana') {
       chip.style.background = 'rgba(245,158,11,0.35)';
-    } else if(h >= 12 && h < 20) {
-      chip.textContent = '🌆 TURNO TARDE';
+    } else if (eh.estado === 'registro' && eh.turno === 'tarde') {
       chip.style.background = 'rgba(107,72,255,0.35)';
+    } else if (eh.estado === 'solo_pdf') {
+      chip.style.background = 'rgba(245,158,11,0.2)';
     } else {
-      chip.textContent = '🌙 FUERA DE TURNO';
       chip.style.background = 'rgba(255,255,255,0.1)';
     }
+    // Actualizar estado del botón en tiempo real
+    verificarBtn();
   }
   // Actualizar contador y lista en tiempo real
   const capEl = document.getElementById('capActual');
@@ -1051,6 +1070,21 @@ function limpiarFirma() {
 function verificarBtn() {
   const alerta = document.getElementById('alertaPasajero');
   const btn = document.getElementById('btnRegistrar');
+  const eh = getEstadoHorario();
+
+  // Bloquear si está completamente fuera de horario
+  if (eh.estado === 'fuera') {
+    alerta.innerHTML='<div class="alert alert-error" style="line-height:1.6">' + eh.msg + '</div>';
+    btn.disabled=true;
+    return;
+  }
+  // Solo PDF (8:01-9:00am): mostrar aviso pero no bloquear comprobante
+  if (eh.estado === 'solo_pdf') {
+    alerta.innerHTML='<div class="alert alert-warning" style="font-size:12px">' + eh.msg + '</div>';
+    btn.disabled=true;
+    return;
+  }
+
   if(!usuarioActual) { btn.disabled=true; return; }
   const yaReg = registros.find(r => r.ficha === usuarioActual.ficha);
   if(yaReg) {
@@ -1297,6 +1331,16 @@ function descargarMiPDF() {
 // VISTA ADMIN
 // ============================================================
 function actualizarAdmin() {
+  // Siempre recargar directo de localStorage para garantizar datos frescos
+  registros = cargarRegistros();
+  console.log('[DEBUG] actualizarAdmin - registros:', registros.length, 'items');
+  if (registros.length === 0) {
+    // Mostrar qué hay en localStorage para diagnóstico
+    const rutaD = getRutaFromURL() || '07';
+    const raw = localStorage.getItem('reg_mov_r' + rutaD);
+    console.log('[DEBUG] raw localStorage reg_mov_r' + rutaD + ':', raw ? JSON.parse(raw).length + ' items' : 'null');
+    console.log('[DEBUG] raw data:', raw ? raw.substring(0,200) : 'vacío');
+  }
   const cfg = cargarConfig();
   const n=registros.length, pct=Math.round((n/CAPACIDAD_MAX)*100);
   document.getElementById('capActual').textContent=n;
