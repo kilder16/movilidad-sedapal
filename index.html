@@ -728,12 +728,13 @@ function cargarConfig() {
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
     const version = '2026-02-22';
+    // Siempre hacer merge: defaults < saved (los datos del usuario tienen prioridad)
+    const cfg = Object.assign({}, defaults, saved, { _version: version });
+    // Guardar con versión actualizada sin perder datos del usuario
     if(saved._version !== version) {
-      const cfg = Object.assign({}, defaults, { _version: version });
       localStorage.setItem(storageKey, JSON.stringify(cfg));
-      return cfg;
     }
-    return Object.assign({}, defaults, saved);
+    return cfg;
   } catch { return defaults; }
 }
 function guardarConfig() {
@@ -751,6 +752,7 @@ function guardarConfig() {
     llegada:     uc('cfgLlegada'),
     horaLlegada: uc('cfgHoraLlegada')
   };
+  cfg._version = '2026-02-22';
   try { localStorage.setItem(storageKey, JSON.stringify(cfg)); } catch {}
   // Actualizar badge de ruta en header con nuevo nombre si cambió
   const badge = document.getElementById('rutaBadge');
