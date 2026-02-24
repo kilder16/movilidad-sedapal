@@ -635,9 +635,9 @@ function cargarRegistros() {
     const REG_KEY = 'reg_mov_r' + rutaActual;
     const saved = JSON.parse(localStorage.getItem(REG_KEY) || '[]');
 
-    // Retornar todos los registros del día actual sin borrar nada
+    // Retornar todos los registros (sin filtro de fecha para evitar problemas de formato)
     return saved
-      .filter(r => r.fecha && r.fecha === getFechaHoy())
+      .filter(r => r.ficha)
       .map(r => ({
         ...r,
         ficha:    (r.ficha||'').toString(),
