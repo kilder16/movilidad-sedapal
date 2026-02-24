@@ -372,6 +372,18 @@ input:focus{border-color:var(--azul);background:#fff;box-shadow:0 0 0 3px rgba(0
 <!-- VISTA SUPERADMIN -->
 <div class="vista" id="vista-superadmin">
 
+  <!-- MODO PRUEBA -->
+  <div class="card" style="border:2px dashed #e67e22;background:#fffbf5">
+    <div class="card-title" style="color:#e67e22">🧪 Modo Prueba</div>
+    <div style="font-size:12px;color:var(--texto-suave);margin-bottom:10px">
+      Desactiva las restricciones de horario para realizar pruebas. Se desactiva automáticamente al recargar la página.
+    </div>
+    <button class="btn" id="btnModoTest" onclick="toggleModoTest()" 
+      style="background:#e67e22;color:#fff;width:100%">
+      🔓 Activar Modo Prueba
+    </button>
+  </div>
+
   <!-- ESTADÍSTICAS -->
   <div class="card">
     <div class="card-title">📊 Estadísticas del Día</div>
@@ -633,6 +645,7 @@ function getTurnoActual() {
 
 // Estados: 'registro' | 'solo_pdf' | 'fuera'
 function getEstadoHorario() {
+  if (modoTest) return { estado: 'registro', turno: 'manana', label: '🧪 MODO PRUEBA', msg: null };
   const now = new Date();
   const mins = now.getHours() * 60 + now.getMinutes();
   if (mins >= 330 && mins < 480) return { estado: 'registro', turno: 'manana', label: '🌅 TURNO MAÑANA', msg: null };
@@ -1599,8 +1612,39 @@ function confirmarBorrarTodo() {
 // TOGGLE EDICIÓN DE DATOS DEL SERVICIO
 // ============================================================
 let modoEdicion = false;
+let modoTest = false; // Desactiva restricciones de horario
 let pinTarget = 'conductor'; // 'conductor' o 'superadmin'
 let superadminOK = false;
+function mostrarToast(msg) {
+  let t = document.getElementById('toastMsg');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toastMsg';
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;z-index:9999;text-align:center;max-width:90vw;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.display = 'block';
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.style.display='none',300); }, 3000);
+}
+
+function toggleModoTest() {
+  modoTest = !modoTest;
+  const btn = document.getElementById('btnModoTest');
+  if (modoTest) {
+    btn.textContent = '🔒 Desactivar Modo Prueba';
+    btn.style.background = 'var(--verde)';
+    mostrarToast('🧪 Modo Prueba ACTIVADO — sin restricciones de horario');
+  } else {
+    btn.textContent = '🔓 Activar Modo Prueba';
+    btn.style.background = '#e67e22';
+    mostrarToast('✅ Restricciones de horario restauradas');
+  }
+  verificarBtn();
+}
+
 function toggleEditar() {
   modoEdicion = !modoEdicion;
   const ids = ['cfgRuta','cfgPlaca','cfgConductor','cfgContratista','cfgClase',
