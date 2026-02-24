@@ -860,10 +860,15 @@ function tick() {
       chip.style.background = 'rgba(255,255,255,0.1)';
     }
   }
-  // Actualizar contador de pasajeros en tiempo real
+  // Actualizar contador y lista en tiempo real
   const capEl = document.getElementById('capActual');
   if (capEl) {
-    const n = cargarRegistros().length;
+    const nuevosRegs = cargarRegistros();
+    if (nuevosRegs.length !== registros.length) {
+      registros = nuevosRegs;
+      actualizarAdmin();
+    }
+    const n = registros.length;
     capEl.textContent = n;
     const capMax = cargarConfig().capacidad || CAPACIDAD_MAX;
     const pct = Math.round((n / capMax) * 100);
