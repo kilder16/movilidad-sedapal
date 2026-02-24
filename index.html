@@ -633,59 +633,21 @@ function cargarRegistros() {
   try {
     const rutaActual = getRutaFromURL() || '07';
     const REG_KEY = 'reg_mov_r' + rutaActual;
-    const REG_CLAVE_KEY = 'reg_mov_clave_r' + rutaActual;
-    const claveSesion = getClaveActual();
     const saved = JSON.parse(localStorage.getItem(REG_KEY) || '[]');
-    const claveGuardada = localStorage.getItem(REG_CLAVE_KEY) || '';
 
-    // Si la clave (fecha+turno) cambió, archivar registros anteriores al historial y limpiar
-    if (claveGuardada && claveGuardada !== claveSesion && saved.length > 0) {
-      // Archivar sesión anterior automáticamente
-      const fechaAnterior = saved[0]?.fecha || claveGuardada.split('_')[0];
-      const turnoAnterior = claveGuardada.split('_')[1] || 'manana';
-      let hist = getHistorial();
-      const claveHist = claveGuardada; // usa clave como id único
-      if (!hist.find(h => h.clave === claveHist)) {
-        hist.unshift({
-          clave: claveHist,
-          fecha: fechaAnterior,
-          turno: turnoAnterior,
-          total: saved.length,
-          ruta: cargarConfig ? (cargarConfig().ruta || '') : '',
-          registros: saved
-        });
-        try { localStorage.setItem(getHistKey(), JSON.stringify(hist)); } catch {}
-      }
-      // Limpiar registros del turno anterior
-      try { localStorage.setItem(REG_KEY, JSON.stringify([])); } catch {}
-      try { localStorage.setItem(REG_CLAVE_KEY, claveSesion); } catch {}
-      return [];
-    }
-
-    // Guardar clave actual si no existe
-    if (!claveGuardada) {
-      try { localStorage.setItem(REG_CLAVE_KEY, claveSesion); } catch {}
-    }
-
-    // Retornar solo registros de la sesión actual (misma fecha y turno)
+    // Retornar todos los registros del día actual sin borrar nada
     return saved
-      .filter(r => {
-        if (!r.fecha) return false;
-        // Mostrar todos los registros del día actual
-        return r.fecha === getFechaHoy();
-      })
-      .map(r => {
-        const u = IDX_FICHA[r.ficha] !== undefined ? USUARIOS[IDX_FICHA[r.ficha]] : null;
-        return {
-          ...r,
-          gerencia: u ? u.gerencia.toUpperCase() : (r.gerencia||'').toUpperCase(),
-          equipo:   u ? u.equipo.toUpperCase()   : (r.equipo||'').toUpperCase(),
-          apellidos:(r.apellidos||'').toUpperCase(),
-          nombres:  (r.nombres||'').toUpperCase()
-        };
-      });
+      .filter(r => r.fecha && r.fecha === getFechaHoy())
+      .map(r => ({
+        ...r,
+        ficha:    (r.ficha||'').toString(),
+        equipo:   (r.equipo||'').toUpperCase(),
+        apellidos:(r.apellidos||'').toUpperCase(),
+        nombres:  (r.nombres||'').toUpperCase()
+      }));
   } catch { return []; }
 }
+
 function guardarRegistros() {
   const rutaActual = getRutaFromURL() || '07';
   const REG_KEY = 'reg_mov_r' + rutaActual;
