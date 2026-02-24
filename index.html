@@ -853,8 +853,9 @@ function tick() {
     } else {
       chip.style.background = 'rgba(255,255,255,0.1)';
     }
-    // Actualizar estado del botón en tiempo real
-    verificarBtn();
+    // Actualizar estado del botón solo si estamos en vista pasajero
+    const vPas = document.getElementById('vista-pasajero');
+    if (vPas && vPas.classList.contains('active')) verificarBtn();
   }
   // Actualizar contador y lista en tiempo real
   const capEl = document.getElementById('capActual');
@@ -1083,6 +1084,7 @@ function limpiarFirma() {
 function verificarBtn() {
   const alerta = document.getElementById('alertaPasajero');
   const btn = document.getElementById('btnRegistrar');
+  if (!alerta || !btn) return; // elementos no disponibles
   const eh = getEstadoHorario();
 
   // Bloquear si está completamente fuera de horario
