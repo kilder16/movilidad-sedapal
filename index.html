@@ -671,11 +671,8 @@ function cargarRegistros() {
     return saved
       .filter(r => {
         if (!r.fecha) return false;
-        if (r.fecha !== getFechaHoy()) return false;
-        // Si el registro tiene campo turno, filtrarlo; si no, inferirlo por hora
-        if (r.turno) return r.turno === getTurnoActual();
-        const hora = r.hora ? parseInt(r.hora.split(':')[0]) : 0;
-        return getTurnoActual() === 'tarde' ? hora >= 12 : hora < 12;
+        // Mostrar todos los registros del día actual
+        return r.fecha === getFechaHoy();
       })
       .map(r => {
         const u = IDX_FICHA[r.ficha] !== undefined ? USUARIOS[IDX_FICHA[r.ficha]] : null;
