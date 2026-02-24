@@ -89,8 +89,8 @@ input:focus{border-color:var(--azul);background:#fff;box-shadow:0 0 0 3px rgba(0
 .cap-rojo{background:linear-gradient(90deg,#c0392b,#e74c3c)}
 .capacidad-texto{font-size:24px;font-weight:700;text-align:center;margin:6px 0 8px}
 
-.lista-header{display:grid;grid-template-columns:26px 1fr 56px 50px;gap:4px;padding:7px 10px;background:var(--azul);color:#fff;border-radius:8px 8px 0 0;font-size:10px;font-weight:700;text-transform:uppercase}
-.lista-item{display:grid;grid-template-columns:26px 1fr 56px 50px;gap:4px;padding:9px 10px;border-bottom:1px solid var(--borde);align-items:center;font-size:12px}
+.lista-header{display:grid;grid-template-columns:26px 1fr 56px 50px 32px;gap:4px;padding:7px 10px;background:var(--azul);color:#fff;border-radius:8px 8px 0 0;font-size:10px;font-weight:700;text-transform:uppercase}
+.lista-item{display:grid;grid-template-columns:26px 1fr 56px 50px 32px;gap:4px;padding:9px 10px;border-bottom:1px solid var(--borde);align-items:center;font-size:12px}
 .lista-item:last-child{border-bottom:none}
 .lista-item:active{background:#f0f6ff}
 .lista-wrap{border:1px solid var(--borde);border-radius:0 0 8px 8px;max-height:340px;overflow-y:auto}
@@ -301,6 +301,7 @@ input:focus{border-color:var(--azul);background:#fff;box-shadow:0 0 0 3px rgba(0
         <button class="btn btn-danger" onclick="confirmarBorrarTodo()">🗑</button>
       </div>
     </div>
+    <div id="infoConductorAdmin" style="padding:6px 4px 8px;display:flex;flex-wrap:wrap;gap:4px"></div>
     <div id="listaAdmin">
       <div class="empty-state"><div class="empty-icon">🚌</div><div>Sin registros aún</div></div>
     </div>
@@ -789,6 +790,18 @@ function guardarConfig() {
     horaLlegada: uc('cfgHoraLlegada')
   };
   try { localStorage.setItem(storageKey, JSON.stringify(cfg)); } catch {}
+  // Actualizar badge de ruta en header con nuevo nombre si cambió
+  const badge = document.getElementById('rutaBadge');
+  if (badge) {
+    const rutaNum = cfg.ruta || getRutaFromURL() || '07';
+    const cat = CATALOGO_RUTAS[rutaNum];
+    const destino = cat ? cat.destino.replace('C.O.P. ','').replace('C.S. SEDAPAL ','').replace('CENTRO DE SERVICIO ','') : '';
+    badge.textContent = '🚌 RUTA ' + rutaNum + (destino ? ' · ' + destino : '');
+  }
+  // Refrescar vista admin si está activa
+  if (document.getElementById('v-admin') && document.getElementById('v-admin').classList.contains('active')) {
+    actualizarAdmin();
+  }
 }
 // ============================================================
 // INICIALIZACIÓN DE RUTA DESDE URL
@@ -802,7 +815,9 @@ function guardarConfig() {
   // Mostrar badge de ruta en el header
   const badge = document.createElement('div');
   badge.id = 'rutaBadge';
-  badge.style.cssText = 'background:rgba(255,255,255,0.2);color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;letter-spacing:1px;white-space:nowrap';
+  badge.style.cssText = 'background:rgba(255,255,255,0.2);color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;letter-spacing:1px;white-space:nowrap;cursor:pointer;user-select:none';
+  badge.title = 'Cambiar movilidad';
+  badge.onclick = abrirSelectorRuta;
   badge.textContent = '🚌 RUTA ' + ruta + (cat ? ' · ' + cat.destino.replace('C.O.P. ','').replace('C.S. SEDAPAL ','').replace('CENTRO DE SERVICIO ','') : '');
   const headerInner = document.querySelector('.header-inner');
   if (headerInner) {
@@ -845,6 +860,22 @@ function tick() {
       chip.style.background = 'rgba(255,255,255,0.1)';
     }
   }
+  // Actualizar contador de pasajeros en tiempo real
+  const capEl = document.getElementById('capActual');
+  if (capEl) {
+    const n = cargarRegistros().length;
+    capEl.textContent = n;
+    const capMax = cargarConfig().capacidad || CAPACIDAD_MAX;
+    const pct = Math.round((n / capMax) * 100);
+    const b = document.getElementById('capBarra');
+    if (b) {
+      b.style.width = Math.min(pct,100) + '%';
+      b.textContent = pct + '%';
+      b.className = 'capacidad-fill ' + (pct<70?'cap-verde':pct<90?'cap-amarillo':'cap-rojo');
+    }
+    const maxEl = document.getElementById('capMax');
+    if (maxEl) maxEl.textContent = capMax;
+  }
 }
 setInterval(tick,1000); tick();
 
@@ -856,7 +887,7 @@ function cambiarVista(v) {
   document.querySelectorAll('.nav-tab').forEach(e => e.classList.remove('active'));
   document.getElementById('vista-'+v).classList.add('active');
   document.getElementById('tab-'+v).classList.add('active');
-  if(v==='admin') { actualizarAdmin(); cargarConfigUI(); }
+  if(v==='admin') { registros = cargarRegistros(); actualizarAdmin(); cargarConfigUI(); }
   if(v==='superadmin') { actualizarSuperAdmin(); }
 }
 function accederConductor() {
@@ -1080,6 +1111,7 @@ function registrarAsistencia() {
   const hora = pad(now.getHours())+':'+pad(now.getMinutes());
   const fecha = now.toLocaleDateString('es-PE');
 
+  const _cfg = cargarConfig();
   registros.push({
     ficha: usuarioActual.ficha,
     apellidos: usuarioActual.apellidos.toUpperCase(),
@@ -1088,6 +1120,9 @@ function registrarAsistencia() {
     gerencia: usuarioActual.gerencia.toUpperCase(),
     hora, fecha,
     turno: getTurnoActual(),
+    ruta: _cfg.ruta || '',
+    conductor: _cfg.conductor || '',
+    placa: _cfg.placa || '',
     firma: canvas.toDataURL('image/png'),
     ts: now.getTime()
   });
@@ -1293,12 +1328,21 @@ function descargarMiPDF() {
 // VISTA ADMIN
 // ============================================================
 function actualizarAdmin() {
+  const cfg = cargarConfig();
   const n=registros.length, pct=Math.round((n/CAPACIDAD_MAX)*100);
   document.getElementById('capActual').textContent=n;
-  document.getElementById('capMax').textContent=CAPACIDAD_MAX;
+  document.getElementById('capMax').textContent=cfg.capacidad || CAPACIDAD_MAX;
   const b=document.getElementById('capBarra');
   b.style.width=Math.min(pct,100)+'%'; b.textContent=pct+'%';
   b.className='capacidad-fill '+(pct<70?'cap-verde':pct<90?'cap-amarillo':'cap-rojo');
+
+  // Mostrar info conductor/placa actualizada
+  const infoCond = document.getElementById('infoConductorAdmin');
+  if(infoCond) {
+    infoCond.innerHTML = 
+      '<span style="font-size:11px;color:var(--texto-suave)">🚌 Placa: <b>' + (cfg.placa||'—') + '</b></span>' +
+      '<span style="font-size:11px;color:var(--texto-suave);margin-left:12px">👤 Conductor: <b>' + (cfg.conductor||'—') + '</b></span>';
+  }
 
   const lista=document.getElementById('listaAdmin');
   if(!registros.length){
@@ -1306,7 +1350,7 @@ function actualizarAdmin() {
     return;
   }
   lista.innerHTML=
-    '<div class="lista-header"><div>#</div><div>Apellidos y Nombres</div><div>Equipo</div><div>Hora</div></div>'+
+    '<div class="lista-header"><div>#</div><div>Apellidos y Nombres</div><div>Equipo</div><div>Hora</div><div></div></div>'+
     '<div class="lista-wrap">'+
     registros.map((r,i)=>
       '<div class="lista-item">'+
@@ -1315,9 +1359,83 @@ function actualizarAdmin() {
       '<div style="font-size:10px;color:var(--texto-suave)">'+escHtml(r.nombres)+' · '+escHtml(r.ficha)+'</div></div>'+
       '<div class="mono" style="font-weight:700;font-size:11px;color:var(--azul-dark)">'+escHtml(r.equipo)+'</div>'+
       '<div class="mono" style="font-size:11px;color:var(--azul)">'+escHtml(r.hora)+'</div>'+
+      '<div><button onclick="eliminarRegistro('+i+')" style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px;line-height:1" title="Eliminar registro">🗑️</button></div>'+
       '</div>'
     ).join('')+
     '</div>';
+}
+
+// ============================================================
+// SELECTOR DE RUTA
+// ============================================================
+function abrirSelectorRuta() {
+  var rutaActual = getRutaFromURL() || '07';
+  var cat = CATALOGO_RUTAS[rutaActual];
+
+  var infoEl = document.getElementById('rutaActualInfo');
+  if (infoEl) {
+    infoEl.innerHTML = '📍 Ruta actual: <b>RUTA ' + rutaActual + (cat ? ' — ' + cat.origen : '') + '</b>';
+  }
+
+  var lista = document.getElementById('listaRutasModal');
+  if (!lista) return;
+
+  var baseURL = window.location.href.split('?')[0];
+  var html = '';
+
+  Object.values(CATALOGO_RUTAS).sort(function(a,b){ return parseInt(a.ruta)-parseInt(b.ruta); }).forEach(function(r) {
+    var esActual = r.ruta === rutaActual;
+    var link = baseURL + '?ruta=' + r.ruta;
+    var borderColor = esActual ? '#0057a8' : '#e0e8f0';
+    var bgColor = esActual ? '#e8f4ff' : '#fff';
+    var badgeNum_bg = esActual ? '#0057a8' : '#e0e8f0';
+    var badgeNum_color = esActual ? '#fff' : '#00305c';
+
+    html += '<div style="border:2px solid ' + borderColor + ';border-radius:12px;padding:12px 14px;background:' + bgColor + ';margin-bottom:2px;position:relative;overflow:hidden">';
+    
+    if (esActual) {
+      html += '<div style="position:absolute;top:8px;right:10px;background:#0057a8;color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:10px;letter-spacing:.5px">ACTUAL</div>';
+    }
+
+    html += '<div style="display:flex;align-items:center;gap:10px">';
+    html += '<div style="background:' + badgeNum_bg + ';color:' + badgeNum_color + ';border-radius:10px;padding:6px 10px;font-size:15px;font-weight:900;min-width:48px;text-align:center;line-height:1">' + r.ruta + '</div>';
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="font-size:12px;font-weight:700;color:#00305c;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + r.origen + '</div>';
+    html += '<div style="font-size:10px;color:#888;display:flex;gap:8px">';
+    html += '<span>⏰ ' + r.horaSalida + '</span>';
+    html += '<span>🏁 ' + r.horaLlegada + '</span>';
+    html += '</div></div></div>';
+
+    if (!esActual) {
+      html += '<a href="' + link + '" style="display:block;margin-top:8px;background:#0057a8;color:#fff;text-align:center;padding:7px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">Ir a esta movilidad →</a>';
+    }
+
+    html += '</div>';
+  });
+
+  lista.innerHTML = html;
+  document.getElementById('modalRuta').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function cerrarSelectorRuta() {
+  document.getElementById('modalRuta').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var m = document.getElementById('modalRuta');
+  if (m) m.addEventListener('click', function(e) { if (e.target === this) cerrarSelectorRuta(); });
+});
+
+function eliminarRegistro(i) {
+  const r = registros[i];
+  if (!r) return;
+  const nombre = r.apellidos + ', ' + r.nombres + ' (' + r.ficha + ')';
+  if (!confirm('¿Eliminar el registro de:\n' + nombre + '?\n\nEsta acción no se puede deshacer.')) return;
+  registros.splice(i, 1);
+  guardarRegistros();
+  actualizarAdmin();
 }
 
 function cargarConfigUI() {
@@ -1478,6 +1596,7 @@ function toggleEditar() {
       el.style.background = '';
       el.style.borderColor = '';
       guardarConfig();
+      actualizarAdmin();
     }
   });
   const btn = document.getElementById('btnEditar');
@@ -1855,5 +1974,23 @@ function generarLinksRutas() {
   document.body.appendChild(modal);
 }
 </script>
+
+<!-- MODAL SELECTOR DE RUTA -->
+<div id="modalRuta" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(3px);overflow-y:auto;padding:16px">
+  <div style="background:#fff;border-radius:16px;max-width:420px;margin:0 auto;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <!-- Header del modal -->
+    <div style="background:linear-gradient(135deg,#00305c,#0057a8);padding:16px 18px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="color:#fff;font-size:14px;font-weight:800;letter-spacing:.5px">🚌 Cambiar Movilidad</div>
+        <div style="color:rgba(255,255,255,.7);font-size:11px;margin-top:2px">Selecciona tu ruta hacia La Atarjea</div>
+      </div>
+      <button onclick="cerrarSelectorRuta()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50%;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
+    </div>
+    <!-- Ruta actual -->
+    <div id="rutaActualInfo" style="background:#e8f4ff;border-bottom:1px solid #cce0f5;padding:10px 18px;font-size:12px;color:#0057a8;font-weight:600"></div>
+    <!-- Lista de rutas -->
+    <div id="listaRutasModal" style="padding:12px 14px;display:grid;gap:8px;max-height:60vh;overflow-y:auto"></div>
+  </div>
+</div>
 </body>
 </html>
