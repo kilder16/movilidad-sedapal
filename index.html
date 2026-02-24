@@ -34,7 +34,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--gris-bg);color:
 .reloj{color:#fff;font-family:'JetBrains Mono',monospace;font-size:13px;text-align:right;line-height:1.4}
 .reloj-fecha{font-size:10px;color:rgba(255,255,255,.7)}
 
-.nav-tabs{background:var(--azul-dark);display:flex;border-top:1px solid rgba(255,255,255,.15)}
+.nav-tabs{background:var(--azul-dark);display:flex;border-top:1px solid rgba(255,255,255,.15);position:relative;z-index:101}
 .nav-tab{flex:1;padding:10px 8px;text-align:center;color:rgba(255,255,255,.6);font-size:12px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;transition:.2s;text-transform:uppercase;letter-spacing:.4px;user-select:none}
 .nav-tab.active{color:#fff;border-bottom-color:#fff}
 
@@ -832,6 +832,7 @@ registros = cargarRegistros(); // re-cargar con clave de ruta ya disponible
 // RELOJ
 // ============================================================
 function tick() {
+  try {
   const n = new Date();
   const pad = x => String(x).padStart(2,'0');
   document.getElementById('relojHora').textContent = pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds());
@@ -878,6 +879,7 @@ function tick() {
     const maxEl = document.getElementById('capMax');
     if (maxEl) maxEl.textContent = capMax;
   }
+  } catch(e) { /* silenciar errores en tick */ }
 }
 setInterval(tick,1000); tick();
 
@@ -893,13 +895,15 @@ function cambiarVista(v) {
   if(v==='superadmin') { actualizarSuperAdmin(); }
 }
 function accederConductor() {
-  if(adminOK) { cambiarVista('admin'); return; }
-  pinTarget = 'conductor';
-  document.getElementById('pinTitulo').textContent = '🔑 Acceso Conductor';
-  pinIngresado = '';
-  document.getElementById('pinError').textContent = '';
-  actualizarDots();
-  document.getElementById('pinOverlay').classList.add('visible');
+  try {
+    if(adminOK) { cambiarVista('admin'); return; }
+    pinTarget = 'conductor';
+    document.getElementById('pinTitulo').textContent = '🔑 Acceso Conductor';
+    pinIngresado = '';
+    document.getElementById('pinError').textContent = '';
+    actualizarDots();
+    document.getElementById('pinOverlay').classList.add('visible');
+  } catch(e) { console.error('accederConductor:', e); }
 }
 function accederSuperAdmin() {
   if(superadminOK) { cambiarVista('superadmin'); actualizarSuperAdmin(); return; }
