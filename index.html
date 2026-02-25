@@ -329,6 +329,12 @@ input[readonly]{background:#f1f5f9;color:var(--texto-suave)}
         <button class="btn btn-danger" onclick="confirmarBorrarTodo()">🗑</button>
       </div>
     </div>
+    <div id="sesionActualBadge" style="margin-bottom:8px;padding:7px 10px;border-radius:10px;font-size:11px;font-weight:700;background:linear-gradient(90deg,#e8f4ff,#f0faff);border:1px solid #bfdbfe;color:#003d7a;display:flex;align-items:center;gap:6px">
+      <span id="sesionTurnoIcon">🌅</span>
+      <span>SESIÓN ACTUAL: </span>
+      <span id="sesionFechaLabel" style="font-family:'JetBrains Mono',monospace">--/--/----</span>
+      <span id="sesionTurnoLabel" style="background:#0055A5;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;margin-left:2px">MAÑANA</span>
+    </div>
     <div id="infoConductorAdmin" style="padding:6px 4px 8px;display:flex;flex-wrap:wrap;gap:4px"></div>
     <div id="listaAdmin">
       <div class="empty-state"><div class="empty-icon">🚌</div><div>Sin registros aún</div></div>
@@ -656,6 +662,8 @@ let adminOK = false;
 // Guardamos últimos resultados para acceder por índice desde el DOM
 let acResultadosFicha = [];
 let acResultadosNombre = [];
+// Clave de sesión activa (para detectar cambio de turno en tiempo real)
+let _claveActivaActual = null;
 
 // ============================================================
 // TURNOS: mañana (05:00–11:59) | tarde (12:00–23:59)
@@ -689,13 +697,35 @@ function getClaveActual() {
   return getFechaHoy() + '_' + getTurnoActual();
 }
 
+// ============================================================
+// GESTIÓN DE SESIÓN POR TURNO
+// Cada sesión = fecha + turno. Al detectar cambio de sesión,
+// se archiva automáticamente en historial y se inicia lista nueva.
+// ============================================================
 function cargarRegistros() {
   try {
     const rutaActual = getRutaFromURL() || '07';
-    const REG_KEY = 'reg_mov_r' + rutaActual;
-    const saved = JSON.parse(localStorage.getItem(REG_KEY) || '[]');
+    const REG_KEY      = 'reg_mov_r' + rutaActual;
+    const REG_CLAVE_KEY = 'reg_mov_clave_r' + rutaActual;
+    const claveActual   = getClaveActual();
+    const claveGuardada = localStorage.getItem(REG_CLAVE_KEY) || '';
 
-    // Retornar todos los registros (sin filtro de fecha para evitar problemas de formato)
+    // ── Si la clave cambió (nuevo turno o nuevo día) → archivar y resetear
+    if (claveGuardada && claveGuardada !== claveActual) {
+      const registrosAnteriores = JSON.parse(localStorage.getItem(REG_KEY) || '[]')
+        .filter(r => r.ficha);
+      if (registrosAnteriores.length > 0) {
+        // Archivar sesión anterior en historial
+        _archivarEnHistorial(claveGuardada, registrosAnteriores, rutaActual);
+      }
+      // Limpiar lista activa para el nuevo turno
+      localStorage.setItem(REG_KEY, JSON.stringify([]));
+      localStorage.setItem(REG_CLAVE_KEY, claveActual);
+      return [];
+    }
+
+    // ── Misma sesión → cargar registros normalmente
+    const saved = JSON.parse(localStorage.getItem(REG_KEY) || '[]');
     return saved
       .filter(r => r.ficha)
       .map(r => ({
@@ -710,11 +740,33 @@ function cargarRegistros() {
 
 function guardarRegistros() {
   const rutaActual = getRutaFromURL() || '07';
-  const REG_KEY = 'reg_mov_r' + rutaActual;
+  const REG_KEY      = 'reg_mov_r' + rutaActual;
   const REG_CLAVE_KEY = 'reg_mov_clave_r' + rutaActual;
   try {
     localStorage.setItem(REG_KEY, JSON.stringify(registros));
     localStorage.setItem(REG_CLAVE_KEY, getClaveActual());
+  } catch {}
+}
+
+// Archiva una lista de registros en el historial bajo la clave dada
+function _archivarEnHistorial(clave, regs, rutaActual) {
+  try {
+    const HIST_KEY = 'hist_mov_r' + rutaActual;
+    let hist = JSON.parse(localStorage.getItem(HIST_KEY) || '[]');
+    // Extraer fecha y turno de la clave "dd/mm/yyyy_turno"
+    const partes = clave.split('_');
+    const turno  = partes[partes.length - 1]; // 'manana' o 'tarde'
+    const fecha  = partes.slice(0, -1).join('_');
+    const idx = hist.findIndex(h => h.clave === clave);
+    const entry = {
+      clave, fecha, turno,
+      total: regs.length,
+      ruta: (JSON.parse(localStorage.getItem('cfg_mov_r' + rutaActual) || '{}')).ruta || rutaActual,
+      registros: regs
+    };
+    if (idx >= 0) hist[idx] = entry; else hist.push(entry);
+    if (hist.length > 120) hist = hist.slice(-120);
+    localStorage.setItem(HIST_KEY, JSON.stringify(hist));
   } catch {}
 }
 // ============================================================
@@ -855,6 +907,7 @@ function guardarConfig() {
 })();
 
 registros = cargarRegistros(); // re-cargar con clave de ruta ya disponible
+_claveActivaActual = getClaveActual();
 
 // ============================================================
 // RELOJ
@@ -886,6 +939,24 @@ function tick() {
     const vPas = document.getElementById('vista-pasajero');
     if (vPas && vPas.classList.contains('active')) verificarBtn();
   }
+  // ── Detectar cambio de turno/día mientras la app está abierta ──
+  const claveAhora = getClaveActual();
+  if (_claveActivaActual && _claveActivaActual !== claveAhora) {
+    // Turno nuevo detectado: archivar sesión anterior y limpiar
+    if (registros.length > 0) {
+      const rutaActual = getRutaFromURL() || '07';
+      _archivarEnHistorial(_claveActivaActual, JSON.parse(JSON.stringify(registros)), rutaActual);
+      const REG_KEY = 'reg_mov_r' + rutaActual;
+      localStorage.setItem(REG_KEY, JSON.stringify([]));
+      localStorage.setItem('reg_mov_clave_r' + rutaActual, claveAhora);
+    }
+    registros = [];
+    _claveActivaActual = claveAhora;
+    actualizarAdmin();
+    mostrarToast('🔄 Nuevo turno iniciado — lista reiniciada');
+  }
+  if (!_claveActivaActual) _claveActivaActual = claveAhora;
+
   // Actualizar contador y lista en tiempo real
   const capEl = document.getElementById('capActual');
   if (capEl) {
@@ -1380,13 +1451,24 @@ function descargarMiPDF() {
 function actualizarAdmin() {
   // Siempre recargar directo de localStorage para garantizar datos frescos
   registros = cargarRegistros();
-  console.log('[DEBUG] actualizarAdmin - registros:', registros.length, 'items');
-  if (registros.length === 0) {
-    // Mostrar qué hay en localStorage para diagnóstico
-    const rutaD = getRutaFromURL() || '07';
-    const raw = localStorage.getItem('reg_mov_r' + rutaD);
-    console.log('[DEBUG] raw localStorage reg_mov_r' + rutaD + ':', raw ? JSON.parse(raw).length + ' items' : 'null');
-    console.log('[DEBUG] raw data:', raw ? raw.substring(0,200) : 'vacío');
+
+  // ── Badge de sesión activa ──
+  const turnoActual = getTurnoActual();
+  const esTarde = turnoActual === 'tarde';
+  const badgeSesion = document.getElementById('sesionActualBadge');
+  if (badgeSesion) {
+    document.getElementById('sesionFechaLabel').textContent = getFechaHoy();
+    const lblTurno = document.getElementById('sesionTurnoLabel');
+    const icoTurno = document.getElementById('sesionTurnoIcon');
+    if (esTarde) {
+      lblTurno.textContent = 'TARDE';
+      lblTurno.style.background = '#6b48ff';
+      icoTurno.textContent = '🌆';
+    } else {
+      lblTurno.textContent = 'MAÑANA';
+      lblTurno.style.background = '#0055A5';
+      icoTurno.textContent = '🌅';
+    }
   }
   const cfg = cargarConfig();
   const n=registros.length, pct=Math.round((n/CAPACIDAD_MAX)*100);
@@ -1406,14 +1488,7 @@ function actualizarAdmin() {
 
   const lista=document.getElementById('listaAdmin');
   if(!registros.length){
-    const rutaD = getRutaFromURL() || '07';
-    const rawD = localStorage.getItem('reg_mov_r' + rutaD);
-    const histD = localStorage.getItem('hist_mov_r' + rutaD);
-    const totalHist = histD ? JSON.parse(histD).reduce((a,h)=>a+(h.registros||[]).length,0) : 0;
-    lista.innerHTML='<div class="empty-state"><div class="empty-icon">🚌</div><div>Sin registros aún</div>' +
-      (totalHist > 0 ? '<div style="font-size:11px;color:var(--azul);margin-top:6px">📂 '+totalHist+' registro(s) en historial</div>' : '') +
-      '<div style="font-size:10px;color:#aaa;margin-top:4px">Raw: '+(rawD ? JSON.parse(rawD).length+' items' : 'vacío')+'</div>' +
-      '</div>';
+    lista.innerHTML='<div class="empty-state"><div class="empty-icon">🚌</div><div>Sin registros en este turno</div><div style="font-size:11px;color:var(--texto-suave);margin-top:4px">Los pasajeros aún no se han registrado</div></div>';
     return;
   }
   lista.innerHTML=
@@ -1831,15 +1906,9 @@ function getSeleccionados() {
 
 function guardarEnHistorial() {
   if(!registros.length) return;
-  let hist = getHistorial();
-  const fecha = registros[0].fecha || getFechaHoy();
-  const turno = registros[0].turno || getTurnoActual();
-  const clave = fecha + '_' + turno;
-  const idx = hist.findIndex(h => h.clave === clave);
-  const entry = { clave, fecha, turno, total: registros.length, ruta: cargarConfig().ruta, registros: JSON.parse(JSON.stringify(registros)) };
-  if(idx >= 0) hist[idx] = entry; else hist.push(entry);
-  if(hist.length > 120) hist = hist.slice(-120); // hasta 120 sesiones (60 días x 2 turnos)
-  setHistorial(hist);
+  const rutaActual = getRutaFromURL() || '07';
+  const clave = getClaveActual();
+  _archivarEnHistorial(clave, JSON.parse(JSON.stringify(registros)), rutaActual);
 }
 
 function verSesion(clave) {
