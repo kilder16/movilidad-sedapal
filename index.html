@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Movilidad SEDAPAL - Control de Asistencia</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -30,7 +30,7 @@
   --sombra: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.06);
   --sombra-md: 0 4px 6px rgba(0,0,0,.07), 0 10px 30px rgba(0,0,0,.08);
 }
-body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--gris-bg);color:var(--texto);min-height:100vh;overflow-x:hidden;background-image:radial-gradient(circle at 20% 50%,rgba(0,85,165,.03) 0%,transparent 60%),radial-gradient(circle at 80% 20%,rgba(26,127,212,.04) 0%,transparent 50%)} #app-wrapper{padding-top:var(--header-h,110px)}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--gris-bg);color:var(--texto);min-height:100vh;overflow-x:hidden;background-image:radial-gradient(circle at 20% 50%,rgba(0,85,165,.03) 0%,transparent 60%),radial-gradient(circle at 80% 20%,rgba(26,127,212,.04) 0%,transparent 50%)} #app-wrapper{padding-top:var(--header-h,110px);min-height:100vh}
 .mono{font-family:'JetBrains Mono',monospace}
 
 /* ── HEADER ── */
@@ -44,7 +44,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--gris-bg);color:
   background: radial-gradient(ellipse at 70% 50%, rgba(255,255,255,.07) 0%, transparent 70%);
   pointer-events:none;
 }
-.header-inner{display:grid;grid-template-columns:auto 1fr auto;align-items:center;padding:8px 14px;gap:10px;height:68px;overflow:visible;position:relative}
+.header-inner{display:grid;grid-template-columns:auto 1fr auto;align-items:center;padding:8px 24px;gap:10px;height:68px;overflow:visible;position:relative;max-width:900px;margin:0 auto}
 .logo-text{color:#fff;font-weight:700;font-size:17px;line-height:1.1}
 .logo-sub{color:rgba(255,255,255,.85);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px}
 .reloj{color:#fff;font-family:'JetBrains Mono',monospace;font-size:13px;text-align:right;line-height:1.5}
@@ -57,8 +57,15 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--gris-bg);color:
 .nav-tab:active{background:rgba(255,255,255,.1)}
 
 /* ── VISTAS ── */
-.vista{display:none;padding:12px;max-width:600px;margin:0 auto}
+.vista{display:none;padding:12px 16px;max-width:600px;margin:0 auto}
 .vista.active{display:block}
+@media(min-width:768px){
+  .vista{max-width:720px;padding:20px 24px}
+  .card{padding:20px}
+}
+@media(min-width:1200px){
+  .vista{max-width:900px}
+}
 
 /* ── CARDS ── */
 .card{background:#fff;border-radius:16px;padding:14px;margin-bottom:10px;box-shadow:var(--sombra);border:1px solid var(--borde)}
