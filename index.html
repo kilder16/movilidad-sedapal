@@ -1408,9 +1408,9 @@ function descargarMiPDF() {
   secTitle('3', 'Conformidad del Usuario');
 
   const FH = 48; // alto caja firma
-  const FW = CW/2 - GAP/2;
+  const FW = CW; // ocupa todo el ancho
 
-  // Tarjeta firma usuario
+  // Tarjeta firma usuario (ancho completo)
   cajaFirma(doc, ML, y, FW, FH);
   doc.setFontSize(6.5); doc.setFont('helvetica','normal'); doc.setTextColor(100,120,140);
   doc.text('FIRMA DEL USUARIO', ML+4, y+5);
@@ -1419,16 +1419,6 @@ function descargarMiPDF() {
   doc.line(ML+4, y+FH-7, ML+FW-4, y+FH-7);
   doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(15,30,55);
   doc.text(reg.apellidos+', '+reg.nombres, ML+4, y+FH-3);
-
-  // Tarjeta conductor
-  const rx = ML + FW + GAP;
-  cajaFirma(doc, rx, y, FW, FH);
-  doc.setFontSize(6.5); doc.setFont('helvetica','normal'); doc.setTextColor(100,120,140);
-  doc.text('CONDUCTOR / RESPONSABLE', rx+4, y+5);
-  doc.setDrawColor(180,195,210); doc.setLineWidth(0.2);
-  doc.line(rx+4, y+FH-7, rx+FW-4, y+FH-7);
-  doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(15,30,55);
-  doc.text(cfg.conductor||'—', rx+4, y+FH-3);
   y += FH + GAP + 4;
 
   // ── Timestamp ─────────────────────────────────────────────
